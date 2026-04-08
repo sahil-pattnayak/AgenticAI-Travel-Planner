@@ -7,8 +7,8 @@ from typing import Iterable
 from langchain_core.documents import Document
 from langchain_community.vectorstores import FAISS
 
-from backend.config import settings
-from backend.rag.embedder import get_embeddings
+from app.core.config import settings
+from app.rag.embedder import get_embeddings
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +20,7 @@ class VectorStoreManager:
         self._store: FAISS | None = None
         Path(self.index_dir).mkdir(parents=True, exist_ok=True)
 
-    def _index_exists(self) -> bool:
+    def index_exists(self) -> bool:
         return Path(self.index_dir, "index.faiss").exists() and Path(
             self.index_dir, "index.pkl"
         ).exists()
@@ -28,7 +28,7 @@ class VectorStoreManager:
     def load(self) -> FAISS | None:
         if self._store is not None:
             return self._store
-        if not self._index_exists():
+        if not self.index_exists():
             return None
         self._store = FAISS.load_local(
             self.index_dir,

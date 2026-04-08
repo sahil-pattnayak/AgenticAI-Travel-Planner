@@ -8,12 +8,12 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
-from backend.agent.planner import TravelPlannerAgent
-from backend.config import settings
-from backend.ingestion.pipeline import ingest_location
-from backend.memory.conversation import ConversationMemory
-from backend.rag.retriever import TravelRetriever
-from backend.rag.vector_store import VectorStoreManager
+from app.agent.planner import TravelPlannerAgent
+from app.core.config import settings
+from app.ingestion.pipeline import ingest_location
+from app.memory.conversation import ConversationMemory
+from app.rag.retriever import TravelRetriever
+from app.rag.vector_store import VectorStoreManager
 
 logging.basicConfig(
     level=getattr(logging, settings.log_level.upper(), logging.INFO),
@@ -22,7 +22,7 @@ logging.basicConfig(
 logger = logging.getLogger("travel_planner_api")
 
 app = FastAPI(title="VoyagePilot AI - Smart Travel Planner API", version="1.0.0")
-FRONTEND_INDEX = Path(__file__).resolve().parents[2] / "frontend" / "index.html"
+FRONTEND_INDEX = Path(__file__).resolve().parents[1] / "frontend" / "index.html"
 
 memory = ConversationMemory()
 vector_store = VectorStoreManager()

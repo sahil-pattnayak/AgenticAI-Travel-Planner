@@ -38,5 +38,5 @@ dist/
 *.egg-info/
 
 # Local vector DB / runtime data
-backend/data/faiss_store/
+data/faiss_store/
 

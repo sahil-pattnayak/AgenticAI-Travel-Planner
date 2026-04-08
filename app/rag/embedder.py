@@ -1,6 +1,6 @@
 from langchain_openai import OpenAIEmbeddings
 
-from backend.config import settings
+from app.core.config import settings
 
 
 def get_embeddings() -> OpenAIEmbeddings:

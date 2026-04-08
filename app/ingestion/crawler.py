@@ -8,14 +8,14 @@ from typing import Any
 import requests
 from crawl4ai import AsyncWebCrawler
 
-from backend.config import settings
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
 
 class TravelCrawler:
     @staticmethod
-    def _fallback_fetch(url: str) -> dict[str, Any]:
+    def fallback_fetch(url: str) -> dict[str, Any]:
         try:
             resp = requests.get(
                 url,
@@ -44,9 +44,9 @@ class TravelCrawler:
                 "error": f"fallback_failed: {exc!r}",
             }
 
-    async def _crawl_url(self, url: str) -> dict[str, Any]:
+    async def crawl_url(self, url: str) -> dict[str, Any]:
         if sys.platform.startswith("win") and not settings.crawl4ai_enabled:
-            fallback = await asyncio.to_thread(self._fallback_fetch, url)
+            fallback = await asyncio.to_thread(self.fallback_fetch, url)
             if fallback["success"]:
                 fallback["error"] = "crawl4ai_disabled_on_windows_fallback_used"
             return fallback
@@ -65,12 +65,12 @@ class TravelCrawler:
                     "text": markdown,
                     "error": None,
                 }
-            fallback = await asyncio.to_thread(self._fallback_fetch, url)
+            fallback = await asyncio.to_thread(self.fallback_fetch, url)
             if fallback["success"]:
                 fallback["error"] = "crawl4ai_empty_content_fallback_used"
             return fallback
         except Exception as exc:  # noqa: BLE001
-            fallback = await asyncio.to_thread(self._fallback_fetch, url)
+            fallback = await asyncio.to_thread(self.fallback_fetch, url)
             if fallback["success"]:
                 fallback["error"] = f"crawl4ai_failed_fallback_used: {exc!r}"
             else:
@@ -79,7 +79,7 @@ class TravelCrawler:
 
     async def crawl_urls(self, urls: list[str]) -> list[dict[str, Any]]:
         logger.info("Crawling %s sources.", len(urls))
-        tasks = [self._crawl_url(url) for url in urls]
+        tasks = [self.crawl_url(url) for url in urls]
         raw = await asyncio.gather(*tasks, return_exceptions=True)
         processed: list[dict[str, Any]] = []
         for url, item in zip(urls, raw, strict=True):

@@ -159,6 +159,35 @@
         transform: translateY(-1px);
       }
 
+      input[type="date"] {
+        color-scheme: dark;
+        padding-right: 2.9rem;
+      }
+
+      input[type="date"]::-webkit-calendar-picker-indicator {
+        opacity: 0;
+        width: 100%;
+        height: 100%;
+        position: absolute;
+        inset: 0;
+        cursor: pointer;
+      }
+
+      .date-wrap {
+        position: relative;
+      }
+
+      .date-icon {
+        position: absolute;
+        right: 0.9rem;
+        top: 50%;
+        transform: translateY(-50%);
+        pointer-events: none;
+        color: #ffd166;
+        font-size: 1.05rem;
+        text-shadow: 0 0 8px rgba(255, 209, 102, 0.55);
+      }
+
       .chip {
         border: 1px solid rgba(122, 168, 255, 0.35);
         background: linear-gradient(140deg, rgba(20, 34, 78, 0.85), rgba(11, 22, 58, 0.7));
@@ -233,11 +262,17 @@
 
               <div>
                 <label for="startDate" class="mb-1 block text-sm text-blue-100">Travel Start</label>
-                <input id="startDate" type="date" class="input-style w-full rounded-xl px-3 py-2" required />
+                <div class="date-wrap">
+                  <input id="startDate" type="date" class="input-style w-full rounded-xl px-3 py-2" required />
+                  <span class="date-icon">📅</span>
+                </div>
               </div>
               <div>
                 <label for="endDate" class="mb-1 block text-sm text-blue-100">Travel End</label>
-                <input id="endDate" type="date" class="input-style w-full rounded-xl px-3 py-2" required />
+                <div class="date-wrap">
+                  <input id="endDate" type="date" class="input-style w-full rounded-xl px-3 py-2" required />
+                  <span class="date-icon">📅</span>
+                </div>
               </div>
 
               <div>
@@ -251,10 +286,19 @@
                   <option>Low</option>
                   <option>Medium</option>
                   <option>High</option>
+                  <option selected>No Budget Constraint</option>
                 </select>
               </div>
 
               <div>
+                <label for="hotelRequired" class="mb-1 block text-sm text-blue-100">Hotel Required</label>
+                <select id="hotelRequired" class="input-style w-full rounded-xl px-3 py-2" required>
+                  <option selected>No</option>
+                  <option>Yes</option>
+                </select>
+              </div>
+
+              <div id="hotelCategoryWrap">
                 <label for="hotel" class="mb-1 block text-sm text-blue-100">Hotel Category</label>
                 <select id="hotel" class="input-style w-full rounded-xl px-3 py-2" required>
                   <option>1-star</option>
@@ -329,8 +373,6 @@
         <section id="resultCard" class="glass-card mt-5 hidden rounded-2xl p-5">
           <h3 class="text-lg font-semibold text-white">Planner Conversation</h3>
           <div id="answerBox" class="answer-scroll mt-3 grid gap-3"></div>
-          <p id="metaBox" class="mt-3 text-sm text-blue-100/80"></p>
-
           <div class="mt-4">
             <div class="grid gap-3 md:grid-cols-3 md:items-start">
               <div class="md:col-span-2">
@@ -338,8 +380,6 @@
                 <div id="followupChips" class="mt-2 flex flex-wrap gap-2"></div>
               </div>
               <div class="rounded-xl border border-amber-300/40 bg-amber-200/10 p-3">
-                <h4 class="text-sm font-semibold text-amber-100">AI Follow-up Control</h4>
-                <p class="mt-1 text-xs text-amber-50/95">Ask up to 9 follow-up questions. Suggested prompts auto-update after every response.</p>
                 <p id="followupLimitText" class="mt-2 text-sm text-amber-100"></p>
               </div>
             </div>
@@ -568,17 +608,21 @@
       const form = document.getElementById("plannerForm");
       const resultCard = document.getElementById("resultCard");
       const answerBox = document.getElementById("answerBox");
-      const metaBox = document.getElementById("metaBox");
       const submitBtn = document.getElementById("submitBtn");
       const resetBtn = document.getElementById("resetBtn");
       const followupChips = document.getElementById("followupChips");
       const followupForm = document.getElementById("followupForm");
       const followupInput = document.getElementById("followupInput");
       const followupLimitText = document.getElementById("followupLimitText");
+      const hotelRequired = document.getElementById("hotelRequired");
+      const hotelCategoryWrap = document.getElementById("hotelCategoryWrap");
+      const hotelCategory = document.getElementById("hotel");
 
       let lastLocation = "";
       let followupsUsed = 0;
       const FOLLOWUP_MAX = 9;
+
+      hotelRequired.addEventListener("change", syncHotelVisibility);
 
       resetBtn.addEventListener("click", () => {
         form.reset();
@@ -588,7 +632,6 @@
         Array.from(foodPref.options).forEach((opt) => (opt.selected = false));
         resultCard.classList.add("hidden");
         answerBox.innerHTML = "";
-        metaBox.textContent = "";
         followupChips.innerHTML = "";
         followupInput.value = "";
         lastLocation = "";
@@ -608,6 +651,7 @@
         const selectedTravelModes = Array.from(travelModeSelect.selectedOptions).map((o) => o.value);
         const budget = document.getElementById("budget").value;
         const hotel = document.getElementById("hotel").value;
+        const hotelNeeded = hotelRequired.value;
         const purpose = document.getElementById("purpose").value;
         const kids = document.getElementById("kids").value;
         const pets = document.getElementById("pets").value;
@@ -635,7 +679,8 @@
           `Number of travelers: ${persons}.`,
           `Preferred travel modes: ${selectedTravelModes.join(", ")}.`,
           `Budget: ${budget}.`,
-          `Hotel preference: ${hotel}.`,
+          `Hotel required: ${hotelNeeded}.`,
+          ...(hotelNeeded === "Yes" ? [`Hotel preference: ${hotel}.`] : []),
           `Purpose of travel: ${purpose}.`,
           `Travelling with kids: ${kids}.`,
           `Travelling with pets: ${pets}.`,
@@ -686,9 +731,6 @@
           const rawAnswer = data.answer || "No answer returned.";
           const enrichedAnswer = ensureCitationsInBody(extractFinalAnswer(rawAnswer), data.sources || []);
           replaceLastLoadingWithAnswer(query, renderMarkdownLike(enrichedAnswer));
-
-          const sources = Array.isArray(data.sources) ? data.sources.join(", ") : "n/a";
-          metaBox.textContent = `Sources: ${sources}`;
 
           renderFollowupChips(data.suggested_followups || []);
           if (isFollowup) {
@@ -759,10 +801,14 @@
 
       function ensureCitationsInBody(answerText, sources) {
         if (!answerText || typeof answerText !== "string") return "No answer returned.";
-        if (answerText.includes("Citations:")) return answerText;
-        if (!Array.isArray(sources) || !sources.length) return answerText;
-        const citationLines = sources.map((src, i) => `[${i + 1}] ${src}`).join("\n");
-        return `${answerText}\n\nCitations:\n${citationLines}`;
+        let normalized = answerText.replace("Citations:", "Sources:");
+        normalized = normalized.replace(/\[S\d+\]/g, "").replace(/\[\d+\]/g, "");
+        normalized = normalized.replace(/^\s*Sources:\s*$/im, "Sources:");
+        normalized = normalized.replace(/\n{3,}/g, "\n\n");
+        if (!Array.isArray(sources) || !sources.length) return normalized;
+        normalized = normalized.replace(/\n*(Sources:)\s*[\s\S]*$/i, "").trim();
+        const sourceLines = sources.join("\n");
+        return `${normalized}\n\nSources:\n${sourceLines}`;
       }
 
       function renderMarkdownLike(text) {
@@ -772,7 +818,9 @@
           if (headingMatch) return `<strong>${headingMatch[1]}</strong>`;
           return line;
         });
-        return lines.join("\n").replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/\n/g, "<br>");
+        const withBold = lines.join("\n").replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+        const withLinks = withBold.replace(/(https?:\/\/[^\s<]+)/g, '<a href=\"$1\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"text-cyan-300 underline\">$1</a>');
+        return withLinks.replace(/\n/g, "<br>");
       }
 
       function escapeHtml(str) {
@@ -785,6 +833,13 @@
       }
 
       updateFollowupLimit();
+      syncHotelVisibility();
+
+      function syncHotelVisibility() {
+        const show = hotelRequired.value === "Yes";
+        hotelCategoryWrap.style.display = show ? "" : "none";
+        hotelCategory.required = show;
+      }
     </script>
   </body>
 </html>

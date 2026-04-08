@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from langchain_core.documents import Document
 
-from backend.rag.vector_store import VectorStoreManager
+from app.rag.vector_store import VectorStoreManager
 
 
 class TravelRetriever:

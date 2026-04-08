@@ -8,11 +8,11 @@ from typing import Any, TypedDict
 from langchain_openai import ChatOpenAI
 from langgraph.graph import END, StateGraph
 
-from backend.agent.executor import ToolExecutor
-from backend.agent.prompts import FINAL_ANSWER_PROMPT
-from backend.config import settings
-from backend.memory.conversation import ConversationMemory
-from backend.rag.retriever import TravelRetriever
+from app.agent.executor import ToolExecutor
+from app.agent.prompts import FINAL_ANSWER_PROMPT
+from app.core.config import settings
+from app.memory.conversation import ConversationMemory
+from app.rag.retriever import TravelRetriever
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +33,7 @@ SOURCE_NAME_TO_URL = {
     "wiki": "https://en.wikipedia.org/",
     "wikipedia": "https://en.wikipedia.org/",
     "blog": "https://www.nomadicmatt.com/",
+    "incredibleindia": "https://www.incredibleindia.gov.in/en",
 }
 
 
@@ -57,35 +58,35 @@ class TravelPlannerAgent:
         self.memory = memory
         self.executor = ToolExecutor(memory=memory)
         self.llm = ChatOpenAI(model=settings.model_name, api_key=settings.openai_api_key)
-        self.graph = self._build_graph()
+        self.graph = self.build_graph()
 
-    def _build_graph(self):
+    def build_graph(self):
         graph = StateGraph(AgentState)
-        graph.add_node("planner", self._planner_node)
-        graph.add_node("tool_executor", self._tool_node)
-        graph.add_node("responder", self._responder_node)
+        graph.add_node("planner", self.planner_node)
+        graph.add_node("tool_executor", self.tool_node)
+        graph.add_node("responder", self.responder_node)
         graph.set_entry_point("planner")
         graph.add_conditional_edges(
             "planner",
-            self._route_from_planner,
+            self.route_from_planner,
             {"tool": "tool_executor", "respond": "responder"},
         )
         graph.add_edge("tool_executor", "responder")
         graph.add_edge("responder", END)
         return graph.compile()
 
-    def _infer_location(self, query: str) -> str:
+    def infer_location(self, query: str) -> str:
         match = re.search(r"\bto ([A-Za-z][A-Za-z\\s-]{1,40})", query, flags=re.IGNORECASE)
         if not match:
             return ""
         return match.group(1).strip(" .?!,")
 
-    def _planner_node(self, state: AgentState) -> AgentState:
+    def planner_node(self, state: AgentState) -> AgentState:
         query = state["query"].strip()
         location = state.get("location", "").strip()
         weather_consent = state.get("weather_consent")
         if not location:
-            location = self._infer_location(query)
+            location = self.infer_location(query)
         lowered = query.lower()
         tokens = re.findall(r"[a-z]+", lowered)
         actions = state.get("actions_taken", [])
@@ -113,13 +114,13 @@ class TravelPlannerAgent:
                     "actions_taken": actions,
                 }
 
-        weather_intent = self._intent_match(
+        weather_intent = self.intent_matches_keywords(
             lowered=lowered,
             tokens=tokens,
             keywords=["weather", "temperature", "forecast", "climate", "wether", "temprature"],
             phrases=["climate now", "weather now", "weather forecast"],
         ) or any(e in query for e in ["🌦", "☀", "🌤", "🌧", "⛅"])
-        news_intent = self._intent_match(
+        news_intent = self.intent_matches_keywords(
             lowered=lowered,
             tokens=tokens,
             keywords=["news", "safety", "issue", "issues", "alert", "risk", "unsafe"],
@@ -211,12 +212,12 @@ class TravelPlannerAgent:
             "actions_taken": actions,
         }
 
-    def _route_from_planner(self, state: AgentState) -> str:
+    def route_from_planner(self, state: AgentState) -> str:
         if state.get("next_action") in {"weather_tool", "news_tool"}:
             return "tool"
         return "respond"
 
-    def _tool_node(self, state: AgentState) -> AgentState:
+    def tool_node(self, state: AgentState) -> AgentState:
         action = state.get("next_action", "")
         location = state.get("location", "").strip()
         if not location:
@@ -239,11 +240,21 @@ class TravelPlannerAgent:
                 "actions_taken": state.get("actions_taken", []) + ["tool_error"],
             }
 
-    def _responder_node(self, state: AgentState) -> AgentState:
+    def responder_node(self, state: AgentState) -> AgentState:
         query = state["query"]
         location = state.get("location", "")
+        lowered_query = query.lower()
+        query_tokens = re.findall(r"[a-z]+", lowered_query)
         actions_taken = state.get("actions_taken", [])
         recent_turns = self.memory.last_turns(3)
+        hotel_required, hotel_category = self.extract_hotel_constraints(query)
+        budget_constraint = self.extract_budget_constraint(query)
+        hotel_query_intent = self.intent_matches_keywords(
+            lowered=lowered_query,
+            tokens=query_tokens,
+            keywords=["hotel", "hotels", "stay", "accommodation", "resort", "hostel", "lodging"],
+            phrases=["where to stay", "place to stay", "hotel recommendation", "accommodation options"],
+        )
 
         if state.get("next_action") == "ask_weather_permission":
             answer = (
@@ -290,14 +301,13 @@ class TravelPlannerAgent:
 
         citation_candidates.extend(extra_sources)
         source_names = list(dict.fromkeys([s for s in citation_candidates if s]))
-        citation_list_text = "\n".join(
-            f"[{i}] {src}" for i, src in enumerate(source_names, start=1)
-        ) or "[1] No external source available."
+        source_list_text = "\n".join(source_names) or "No external source available."
 
         prompt = (
             f"{FINAL_ANSWER_PROMPT}\n\n"
             f"User Query: {query}\n"
             f"Location: {location or 'unknown'}\n"
+            f"Trip Constraints: hotel_required={hotel_required}, hotel_category={hotel_category or 'not_specified'}, budget={budget_constraint}\n"
             f"Recent Conversation: {recent_turns}\n"
             f"Planner Thought: {state.get('thought', '')}\n"
             f"Actions Taken: {actions_taken}\n"
@@ -305,8 +315,10 @@ class TravelPlannerAgent:
             f"Tool Observation: {state.get('observation', 'No tool used')}\n"
             f"Tool Data: {tool_output}\n\n"
             f"RAG Context:\n{rag_context if rag_context else 'No retrieved context found.'}\n\n"
-            f"Citation List:\n{citation_list_text}\n\n"
-            "Write a useful answer for travel planning."
+            f"Source List:\n{source_list_text}\n\n"
+            "Write a useful answer for travel planning.\n"
+            "If hotel_required is yes: include at least 3 hotel suggestions that match hotel_category.\n"
+            "If exact hotel names are not available from context, say so and provide filter-style guidance for the requested category."
         )
         model_response = self.llm.invoke(prompt)
         answer = model_response.content if hasattr(model_response, "content") else str(model_response)
@@ -326,18 +338,71 @@ class TravelPlannerAgent:
                     continue
                 filtered_lines.append(line)
             answer = "\n".join(filtered_lines).strip()
-        citations_block = "\n".join(
-            f"[{i}] {src}" for i, src in enumerate(source_names, start=1)
-        ) or "[1] No external source available."
-        if "Citations:" not in answer:
-            answer = f"{answer}\n\nCitations:\n{citations_block}"
-        elif "[" not in answer:
-            answer = f"{answer}\n{citations_block}"
-        followups = self._suggest_followups(query=query, answer=answer, location=location)
+        sources_block = "\n".join(source_names) or "No external source available."
+        answer = re.sub(r"\n*(?:Citations|Sources):\s*[\s\S]*$", "", answer, flags=re.IGNORECASE).strip()
+        answer = self.remove_unrelated_hotel_content(answer, hotel_query_intent)
+        answer = self.ensure_hotel_recommendations(answer, hotel_required, hotel_category)
+        answer = f"{answer}\n\nSources:\n{sources_block}"
+        followups = self.suggest_followup_questions(query=query, answer=answer, location=location)
         return {"answer": answer, "sources": source_names, "suggested_followups": followups}
 
     @staticmethod
-    def _intent_match(
+    def extract_hotel_constraints(query: str) -> tuple[str, str | None]:
+        lowered = query.lower()
+        required_match = re.search(r"hotel required:\s*(yes|no)", lowered)
+        hotel_required = required_match.group(1) if required_match else "not_specified"
+        category_match = re.search(r"hotel preference:\s*([1-5][ -]?star)", lowered)
+        hotel_category = None
+        if category_match:
+            hotel_category = category_match.group(1).replace(" ", "-")
+        return hotel_required, hotel_category
+
+    @staticmethod
+    def extract_budget_constraint(query: str) -> str:
+        lowered = query.lower()
+        budget_match = re.search(r"budget:\s*([a-z -]+)", lowered)
+        if not budget_match:
+            return "not_specified"
+        raw = budget_match.group(1).strip().rstrip(".")
+        if "no budget constraint" in raw:
+            return "no_budget_constraint"
+        if raw.startswith("low"):
+            return "low"
+        if raw.startswith("medium"):
+            return "medium"
+        if raw.startswith("high"):
+            return "high"
+        return raw.replace(" ", "_")
+
+    @staticmethod
+    def ensure_hotel_recommendations(answer: str, hotel_required: str, hotel_category: str | None) -> str:
+        if hotel_required != "yes":
+            return answer
+        normalized = answer.lower()
+        has_hotel_section = "hotel" in normalized and ("recommend" in normalized or "stay" in normalized)
+        has_category = hotel_category is None or hotel_category.replace("-", " ") in normalized or hotel_category in normalized
+        if has_hotel_section and has_category:
+            return answer
+        category_label = hotel_category or "requested category"
+        fallback = (
+            f"\n\nHotel Suggestions ({category_label}):\n"
+            "1. Use Booking.com/MakeMyTrip filters for the selected category and sort by rating 8+.\n"
+            "2. Prioritize hotels near key attractions and verified recent reviews.\n"
+            "3. Choose free-cancellation options to keep itinerary flexibility.\n"
+        )
+        return f"{answer}{fallback}"
+
+    @staticmethod
+    def remove_unrelated_hotel_content(answer: str, hotel_query_intent: bool) -> str:
+        if hotel_query_intent:
+            return answer
+        blocked_terms = ("hotel", "accommodation", "hostel", "resort", "where to stay", "stay option")
+        filtered_lines = [line for line in answer.splitlines() if not any(term in line.lower() for term in blocked_terms)]
+        cleaned = "\n".join(filtered_lines).strip()
+        return cleaned or answer
+
+    @staticmethod
+    def intent_matches_keywords(
         lowered: str,
         tokens: list[str],
         keywords: list[str],
@@ -353,7 +418,7 @@ class TravelPlannerAgent:
                     return True
         return False
 
-    def _suggest_followups(self, query: str, answer: str, location: str) -> list[str]:
+    def suggest_followup_questions(self, query: str, answer: str, location: str) -> list[str]:
         prompt = (
             "Suggest exactly 3 short follow-up questions a traveler might ask next. "
             "Keep them practical and specific. Return one question per line, no numbering.\n\n"

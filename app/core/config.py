@@ -17,7 +17,7 @@ class Settings:
     embedding_model: str = os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small")
     faiss_index_dir: str = os.getenv(
         "FAISS_INDEX_DIR",
-        str(Path(__file__).resolve().parent / "data" / "faiss_store"),
+        str(Path(__file__).resolve().parents[2] / "data" / "faiss_store"),
     )
     log_level: str = os.getenv("LOG_LEVEL", "INFO")
     crawl4ai_enabled: bool = os.getenv(

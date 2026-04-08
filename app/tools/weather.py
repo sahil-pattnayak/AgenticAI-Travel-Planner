@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import requests
 
-from backend.config import settings
+from app.core.config import settings
 
 
 class WeatherTool:
@@ -10,7 +10,7 @@ class WeatherTool:
     forecast_url = "https://api.openweathermap.org/data/2.5/forecast"
     geocode_url = "http://api.openweathermap.org/geo/1.0/direct"
 
-    def _resolve_location_candidates(self, location: str, limit: int = 5) -> list[dict]:
+    def resolve_location_candidates(self, location: str, limit: int = 5) -> list[dict]:
         params = {
             "q": location,
             "limit": limit,
@@ -22,8 +22,8 @@ class WeatherTool:
         response.raise_for_status()
         return response.json() or []
 
-    def _resolve_or_nearby_location(self, location: str) -> tuple[dict | None, str | None]:
-        direct_rows = self._resolve_location_candidates(location, limit=5)
+    def resolve_or_nearby_location(self, location: str) -> tuple[dict | None, str | None]:
+        direct_rows = self.resolve_location_candidates(location, limit=5)
         if direct_rows:
             return direct_rows[0], None
 
@@ -31,7 +31,7 @@ class WeatherTool:
         tokens = [t for t in location.replace(",", " ").split() if len(t) >= 4]
         suggestions: list[dict] = []
         for token in tokens:
-            rows = self._resolve_location_candidates(token, limit=5)
+            rows = self.resolve_location_candidates(token, limit=5)
             for row in rows:
                 key = (row.get("name"), row.get("state"), row.get("country"))
                 if key not in {(x.get("name"), x.get("state"), x.get("country")) for x in suggestions}:
@@ -53,7 +53,7 @@ class WeatherTool:
         if not settings.openweather_api_key:
             raise ValueError("Weather API key missing. Set OPENWEATHER_API_KEY in .env.")
 
-        resolved, nearby_note = self._resolve_or_nearby_location(location)
+        resolved, nearby_note = self.resolve_or_nearby_location(location)
         if not resolved:
             raise ValueError(
                 f"Weather location not found: {location}. Try a nearby city or add country (e.g., '{location}, IN')."

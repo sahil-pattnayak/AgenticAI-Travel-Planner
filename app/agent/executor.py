@@ -3,9 +3,9 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from backend.memory.conversation import ConversationMemory
-from backend.tools.news import NewsTool
-from backend.tools.weather import WeatherTool
+from app.memory.conversation import ConversationMemory
+from app.tools.news import NewsTool
+from app.tools.weather import WeatherTool
 
 logger = logging.getLogger(__name__)
 
