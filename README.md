@@ -51,31 +51,57 @@ You can ask for a trip plan, then continue with up to 9 follow-up questions in t
 ## Project Structure
 
 ```text
-backend/
-+-- agent/
-�   +-- executor.py
-�   +-- planner.py
-�   +-- prompts.py
-+-- api/
-�   +-- main.py
-+-- ingestion/
-�   +-- cleaner.py
-�   +-- chunker.py
-�   +-- crawler.py
-�   +-- pipeline.py
-+-- memory/
-�   +-- conversation.py
-+-- rag/
-�   +-- embedder.py
-�   +-- retriever.py
-�   +-- vector_store.py
-+-- tools/
-�   +-- news.py
-�   +-- weather.py
-+-- config.py
-
-frontend/
-+-- index.html
+travel-planner/
+├── app/
+│   ├── main.py                    # FastAPI entrypoint
+│   ├── core/
+│   │   ├── config.py
+│   │   └── logging.py
+│   ├── api/
+│   │   ├── routes/
+│   │   │   ├── query.py
+│   │   │   └── health.py
+│   │   └── schemas/
+│   │       ├── query.py
+│   │       └── response.py
+│   ├── agent/
+│   │   ├── planner.py
+│   │   ├── executor.py
+│   │   └── prompts.py
+│   ├── rag/
+│   │   ├── embedder.py
+│   │   ├── retriever.py
+│   │   └── vector_store.py
+│   ├── ingestion/
+│   │   ├── crawler.py
+│   │   ├── cleaner.py
+│   │   ├── chunker.py
+│   │   └── pipeline.py
+│   ├── tools/
+│   │   ├── weather.py
+│   │   └── news.py
+│   └── memory/
+│       └── conversation.py
+├── frontend/
+│   ├── index.html
+│   ├── assets/
+│   │   ├── css/
+│   │   ├── js/
+│   │   └── images/
+│   └── components/                # optional if you split UI
+├── data/
+│   └── faiss_store/
+├── tests/
+│   ├── unit/
+│   ├── integration/
+│   └── e2e/
+├── scripts/
+│   ├── run_dev.ps1
+│   └── ingest_location.py
+├── .env.example
+├── .gitignore
+├── requirements.txt
+└── README.md
 ```
 
 ---
