@@ -1,0 +1,790 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>VoyagePilot AI - Smart Travel Planner</title>
+
+    <!-- Tailwind for rapid premium UI composition -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+      :root {
+        --bg-0: #060b1a;
+        --bg-1: #0a1230;
+        --bg-2: #111b3f;
+        --glow-blue: #5ea8ff;
+        --glow-cyan: #5bfff2;
+        --glow-purple: #8a6dff;
+      }
+
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        overflow-x: hidden;
+        background: radial-gradient(circle at 20% 15%, var(--bg-2), var(--bg-1) 48%, var(--bg-0) 100%);
+        color: #e8f0ff;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      }
+
+      /* Layer 1-2: animated background system */
+      #bg-root {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+        overflow: hidden;
+      }
+
+      #mapCanvas {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0.72;
+      }
+
+      .moving-gradient {
+        position: absolute;
+        width: 68vmax;
+        height: 68vmax;
+        left: 50%;
+        top: 20%;
+        transform: translate(-50%, -50%);
+        background: radial-gradient(circle,
+          rgba(80, 130, 255, 0.22) 0%,
+          rgba(135, 105, 255, 0.17) 35%,
+          rgba(91, 255, 242, 0.12) 60%,
+          rgba(80, 130, 255, 0) 78%);
+        filter: blur(16px);
+        animation: hue-shift 18s ease-in-out infinite alternate;
+      }
+
+      @keyframes hue-shift {
+        0% { transform: translate(-52%, -49%) scale(1); }
+        50% { transform: translate(-48%, -52%) scale(1.08); }
+        100% { transform: translate(-51%, -47%) scale(1.03); }
+      }
+
+      .overlay-grid {
+        position: absolute;
+        inset: 0;
+        opacity: 0.16;
+        background-image:
+          linear-gradient(rgba(120, 150, 255, 0.25) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(120, 150, 255, 0.25) 1px, transparent 1px);
+        background-size: 48px 48px;
+      }
+
+      .page-layer {
+        position: relative;
+        z-index: 2;
+      }
+
+      /* Micro-interactions */
+      .fade-rise {
+        opacity: 0;
+        transform: translateY(18px);
+        animation: fade-rise 700ms cubic-bezier(0.2, 0.7, 0.2, 1) forwards;
+      }
+
+      .fade-rise-2 {
+        opacity: 0;
+        transform: translateY(22px);
+        animation: fade-rise 900ms cubic-bezier(0.2, 0.7, 0.2, 1) 120ms forwards;
+      }
+
+      @keyframes fade-rise {
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .glass-card {
+        background: linear-gradient(145deg, rgba(16, 27, 60, 0.7), rgba(10, 18, 42, 0.6));
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(130, 170, 255, 0.28);
+        box-shadow:
+          0 12px 40px rgba(8, 12, 30, 0.45),
+          inset 0 0 0 1px rgba(190, 220, 255, 0.06);
+        transition: transform 280ms ease, box-shadow 280ms ease;
+      }
+
+      .glass-card:hover {
+        transform: translateY(-4px);
+        box-shadow:
+          0 18px 48px rgba(8, 12, 30, 0.5),
+          0 0 26px rgba(96, 174, 255, 0.16),
+          inset 0 0 0 1px rgba(190, 220, 255, 0.08);
+      }
+
+      .glow-btn {
+        position: relative;
+        transition: transform 220ms ease, box-shadow 220ms ease;
+      }
+
+      .glow-btn::after {
+        content: "";
+        position: absolute;
+        inset: -6px;
+        border-radius: 16px;
+        background: radial-gradient(circle, rgba(105, 158, 255, 0.45), rgba(105, 158, 255, 0));
+        opacity: 0;
+        transition: opacity 220ms ease;
+        z-index: -1;
+      }
+
+      .glow-btn:hover {
+        transform: scale(1.05);
+        box-shadow: 0 0 18px rgba(111, 177, 255, 0.45);
+      }
+
+      .glow-btn:hover::after {
+        opacity: 1;
+      }
+
+      .input-style {
+        background: rgba(12, 20, 47, 0.68);
+        border: 1px solid rgba(145, 180, 255, 0.28);
+        color: #ebf3ff;
+        transition: box-shadow 300ms ease, border-color 300ms ease, transform 300ms ease;
+      }
+
+      .input-style:focus {
+        outline: none;
+        border-color: rgba(117, 195, 255, 0.95);
+        box-shadow: 0 0 0 3px rgba(84, 156, 255, 0.26), 0 0 16px rgba(84, 156, 255, 0.25);
+        transform: translateY(-1px);
+      }
+
+      .chip {
+        border: 1px solid rgba(122, 168, 255, 0.35);
+        background: linear-gradient(140deg, rgba(20, 34, 78, 0.85), rgba(11, 22, 58, 0.7));
+        color: #d9e8ff;
+        transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+      }
+
+      .chip:hover {
+        transform: translateY(-2px);
+        border-color: rgba(136, 207, 255, 0.75);
+        box-shadow: 0 0 14px rgba(96, 168, 255, 0.28);
+      }
+
+      .answer-scroll {
+        max-height: 430px;
+        overflow-y: auto;
+      }
+
+      .answer-scroll::-webkit-scrollbar {
+        width: 8px;
+      }
+
+      .answer-scroll::-webkit-scrollbar-thumb {
+        background: rgba(126, 173, 255, 0.35);
+        border-radius: 8px;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          animation: none !important;
+          transition: none !important;
+          scroll-behavior: auto !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Layered background -->
+    <div id="bg-root" aria-hidden="true">
+      <canvas id="mapCanvas"></canvas>
+      <div class="moving-gradient" id="gradientLayer"></div>
+      <div class="overlay-grid" id="gridLayer"></div>
+    </div>
+
+    <main class="page-layer min-h-screen px-4 py-8 sm:px-6 lg:px-8">
+      <div class="mx-auto w-full max-w-6xl">
+        <section id="heroCard" class="glass-card fade-rise mb-5 rounded-2xl p-6 sm:p-8">
+          <div class="max-w-3xl">
+            <p class="mb-2 inline-flex rounded-full border border-cyan-300/30 bg-cyan-300/10 px-3 py-1 text-xs font-semibold tracking-wider text-cyan-100">
+              AI POWERED TRAVEL INTELLIGENCE
+            </p>
+            <h1 class="text-3xl font-bold leading-tight text-white sm:text-5xl">
+              VoyagePilot AI Travel Planner
+            </h1>
+            <p class="mt-3 text-sm text-blue-100/90 sm:text-base">
+              Real-time route intelligence, weather-aware planning, and follow-up guidance with a premium AI-first experience.
+            </p>
+          </div>
+        </section>
+
+        <section class="grid gap-5">
+          <form id="plannerForm" class="glass-card fade-rise-2 rounded-2xl p-5">
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label for="origin" class="mb-1 block text-sm text-blue-100">Origin City</label>
+                <input id="origin" class="input-style w-full rounded-xl px-3 py-2" required placeholder="e.g. New Delhi" />
+              </div>
+              <div>
+                <label for="destination" class="mb-1 block text-sm text-blue-100">Destination</label>
+                <input id="destination" class="input-style w-full rounded-xl px-3 py-2" required placeholder="e.g. Kashmir" />
+              </div>
+
+              <div>
+                <label for="startDate" class="mb-1 block text-sm text-blue-100">Travel Start</label>
+                <input id="startDate" type="date" class="input-style w-full rounded-xl px-3 py-2" required />
+              </div>
+              <div>
+                <label for="endDate" class="mb-1 block text-sm text-blue-100">Travel End</label>
+                <input id="endDate" type="date" class="input-style w-full rounded-xl px-3 py-2" required />
+              </div>
+
+              <div>
+                <label for="persons" class="mb-1 block text-sm text-blue-100">No. of Persons</label>
+                <input id="persons" type="number" min="1" value="1" class="input-style w-full rounded-xl px-3 py-2" required />
+              </div>
+
+              <div>
+                <label for="budget" class="mb-1 block text-sm text-blue-100">Budget</label>
+                <select id="budget" class="input-style w-full rounded-xl px-3 py-2" required>
+                  <option>Low</option>
+                  <option>Medium</option>
+                  <option>High</option>
+                </select>
+              </div>
+
+              <div>
+                <label for="hotel" class="mb-1 block text-sm text-blue-100">Hotel Category</label>
+                <select id="hotel" class="input-style w-full rounded-xl px-3 py-2" required>
+                  <option>1-star</option>
+                  <option>2-star</option>
+                  <option>3-star</option>
+                  <option>4-star</option>
+                  <option>5-star</option>
+                </select>
+              </div>
+
+              <div>
+                <label for="purpose" class="mb-1 block text-sm text-blue-100">Purpose of Travel</label>
+                <select id="purpose" class="input-style w-full rounded-xl px-3 py-2" required>
+                  <option>Leisure</option>
+                  <option>Business</option>
+                </select>
+              </div>
+
+              <div>
+                <label for="kids" class="mb-1 block text-sm text-blue-100">Travelling with Kids</label>
+                <select id="kids" class="input-style w-full rounded-xl px-3 py-2" required>
+                  <option>No</option>
+                  <option>Yes</option>
+                </select>
+              </div>
+
+              <div>
+                <label for="pets" class="mb-1 block text-sm text-blue-100">Travelling with Pets</label>
+                <select id="pets" class="input-style w-full rounded-xl px-3 py-2" required>
+                  <option>No</option>
+                  <option>Yes</option>
+                </select>
+              </div>
+
+              <div class="sm:col-span-2">
+                <label for="travelMode" class="mb-1 block text-sm text-blue-100">Travelling By (multi-select)</label>
+                <select id="travelMode" multiple size="5" class="input-style w-full rounded-xl px-3 py-2" required>
+                  <option>Flight</option>
+                  <option>Personal Vehicle</option>
+                  <option>Bus</option>
+                  <option>Train</option>
+                  <option>Taxi</option>
+                </select>
+                <p class="mt-1 text-xs text-blue-200/80">Select one or more travel styles you prefer.</p>
+              </div>
+
+              <div class="sm:col-span-2">
+                <label for="foodPref" class="mb-1 block text-sm text-blue-100">Food Preference (multi-select)</label>
+                <select id="foodPref" multiple size="6" class="input-style w-full rounded-xl px-3 py-2" required>
+                  <option>Vegetarian</option>
+                  <option>Non-Vegetarian</option>
+                  <option>Vegan</option>
+                  <option>Jain</option>
+                  <option>Continental</option>
+                  <option>Local Cuisine</option>
+                </select>
+              </div>
+
+              <div class="sm:col-span-2">
+                <label for="notes" class="mb-1 block text-sm text-blue-100">Additional Notes</label>
+                <textarea id="notes" rows="3" class="input-style w-full rounded-xl px-3 py-2" placeholder="Preferences, constraints, activities, etc."></textarea>
+              </div>
+            </div>
+
+            <div class="mt-5 flex flex-wrap gap-3">
+              <button id="submitBtn" type="submit" class="glow-btn rounded-xl bg-sky-300 px-4 py-2 font-semibold text-slate-900">Generate Plan</button>
+              <button id="resetBtn" type="button" class="rounded-xl border border-blue-300/40 bg-blue-100/10 px-4 py-2 font-semibold text-blue-100">Reset</button>
+            </div>
+          </form>
+        </section>
+
+        <section id="resultCard" class="glass-card mt-5 hidden rounded-2xl p-5">
+          <h3 class="text-lg font-semibold text-white">Planner Conversation</h3>
+          <div id="answerBox" class="answer-scroll mt-3 grid gap-3"></div>
+          <p id="metaBox" class="mt-3 text-sm text-blue-100/80"></p>
+
+          <div class="mt-4">
+            <div class="grid gap-3 md:grid-cols-3 md:items-start">
+              <div class="md:col-span-2">
+                <label class="text-sm text-blue-100">Suggested Follow-up Questions</label>
+                <div id="followupChips" class="mt-2 flex flex-wrap gap-2"></div>
+              </div>
+              <div class="rounded-xl border border-amber-300/40 bg-amber-200/10 p-3">
+                <h4 class="text-sm font-semibold text-amber-100">AI Follow-up Control</h4>
+                <p class="mt-1 text-xs text-amber-50/95">Ask up to 9 follow-up questions. Suggested prompts auto-update after every response.</p>
+                <p id="followupLimitText" class="mt-2 text-sm text-amber-100"></p>
+              </div>
+            </div>
+
+            <form id="followupForm" class="mt-3 flex flex-col gap-2 sm:flex-row">
+              <input id="followupInput" type="text" class="input-style w-full rounded-xl px-3 py-2" placeholder="Ask a follow-up question..." />
+              <button type="submit" class="glow-btn rounded-xl bg-sky-300 px-4 py-2 font-semibold text-slate-900">Ask Follow-up</button>
+            </form>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <script>
+      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+      /*
+       * Background animation logic
+       * -------------------------------------------------------------
+       * - Draws an abstract world/grid-like network
+       * - Pulsing nodes represent cities
+       * - Curved arcs simulate route generation
+       * - Moving particles simulate AI data flow
+       *
+       * Tuning knobs:
+       *   nodeCount, particleCount, routeCount
+       *   pulseSpeed, routeSpeed, parallaxStrength
+       */
+      (() => {
+        const canvas = document.getElementById("mapCanvas");
+        const ctx = canvas.getContext("2d");
+        const gradientLayer = document.getElementById("gradientLayer");
+        const gridLayer = document.getElementById("gridLayer");
+
+        let w = 0;
+        let h = 0;
+        let mouseX = 0;
+        let mouseY = 0;
+        let t = 0;
+
+        const nodeCount = 22;
+        const particleCount = 55;
+        const routeCount = 7;
+
+        const nodes = [];
+        const particles = [];
+        const routes = [];
+
+        function resize() {
+          w = canvas.width = window.innerWidth;
+          h = canvas.height = window.innerHeight;
+          nodes.length = 0;
+          particles.length = 0;
+          routes.length = 0;
+          createNodes();
+          createParticles();
+          createRoutes();
+        }
+
+        function rand(min, max) {
+          return Math.random() * (max - min) + min;
+        }
+
+        function createNodes() {
+          for (let i = 0; i < nodeCount; i += 1) {
+            nodes.push({
+              x: rand(w * 0.06, w * 0.94),
+              y: rand(h * 0.14, h * 0.92),
+              r: rand(1.8, 3.2),
+              phase: rand(0, Math.PI * 2),
+            });
+          }
+        }
+
+        function createParticles() {
+          for (let i = 0; i < particleCount; i += 1) {
+            particles.push({
+              x: rand(0, w),
+              y: rand(0, h),
+              vx: rand(-0.08, 0.08),
+              vy: rand(-0.06, 0.06),
+              size: rand(0.8, 2.1),
+            });
+          }
+        }
+
+        function sampleNode() {
+          return nodes[Math.floor(rand(0, nodes.length))];
+        }
+
+        function makeRoute() {
+          const a = sampleNode();
+          let b = sampleNode();
+          if (a === b) b = sampleNode();
+          const mx = (a.x + b.x) / 2 + rand(-90, 90);
+          const my = (a.y + b.y) / 2 - rand(40, 130);
+          return {
+            a,
+            b,
+            c: { x: mx, y: my },
+            progress: rand(0, 1),
+            speed: rand(0.0025, 0.0062),
+          };
+        }
+
+        function createRoutes() {
+          for (let i = 0; i < routeCount; i += 1) {
+            routes.push(makeRoute());
+          }
+        }
+
+        function qBezier(a, c, b, p) {
+          const inv = 1 - p;
+          return {
+            x: inv * inv * a.x + 2 * inv * p * c.x + p * p * b.x,
+            y: inv * inv * a.y + 2 * inv * p * c.y + p * p * b.y,
+          };
+        }
+
+        function drawRoute(route) {
+          ctx.save();
+          ctx.beginPath();
+          ctx.moveTo(route.a.x, route.a.y);
+          ctx.quadraticCurveTo(route.c.x, route.c.y, route.b.x, route.b.y);
+          ctx.strokeStyle = "rgba(113, 177, 255, 0.36)";
+          ctx.setLineDash([5, 7]);
+          ctx.lineWidth = 1.25;
+          ctx.stroke();
+          ctx.restore();
+
+          const p = qBezier(route.a, route.c, route.b, route.progress);
+          const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, 11);
+          g.addColorStop(0, "rgba(91,255,242,0.95)");
+          g.addColorStop(1, "rgba(91,255,242,0)");
+          ctx.fillStyle = g;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, 11, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = "rgba(190, 251, 255, 0.95)";
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, 2.2, 0, Math.PI * 2);
+          ctx.fill();
+
+          route.progress += route.speed;
+          if (route.progress >= 1) {
+            Object.assign(route, makeRoute());
+            route.progress = 0;
+          }
+        }
+
+        function drawNodes() {
+          for (const n of nodes) {
+            const pulse = 0.55 + 0.45 * Math.sin(t * 0.022 + n.phase);
+            const r = n.r + pulse * 1.2;
+
+            const glow = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, r * 5);
+            glow.addColorStop(0, "rgba(126,184,255,0.8)");
+            glow.addColorStop(1, "rgba(126,184,255,0)");
+            ctx.fillStyle = glow;
+            ctx.beginPath();
+            ctx.arc(n.x, n.y, r * 5, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = "rgba(208, 234, 255, 0.95)";
+            ctx.beginPath();
+            ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+
+        function drawParticles() {
+          for (const p of particles) {
+            p.x += p.vx;
+            p.y += p.vy;
+            if (p.x < -5) p.x = w + 5;
+            if (p.x > w + 5) p.x = -5;
+            if (p.y < -5) p.y = h + 5;
+            if (p.y > h + 5) p.y = -5;
+
+            ctx.fillStyle = "rgba(141, 181, 255, 0.26)";
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+
+        function draw() {
+          ctx.clearRect(0, 0, w, h);
+
+          // abstract continent-like blobs for map feel
+          ctx.fillStyle = "rgba(78, 106, 178, 0.12)";
+          for (let i = 0; i < 5; i += 1) {
+            const cx = w * (0.15 + i * 0.19) + Math.sin((t + i * 70) * 0.004) * 26;
+            const cy = h * (0.27 + (i % 2) * 0.16) + Math.cos((t + i * 50) * 0.003) * 18;
+            ctx.beginPath();
+            ctx.ellipse(cx, cy, 140 + i * 12, 62 + i * 5, 0.2, 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+          drawParticles();
+          drawNodes();
+          for (const r of routes) drawRoute(r);
+
+          t += 1;
+          if (!reduceMotion) requestAnimationFrame(draw);
+        }
+
+        window.addEventListener("resize", resize);
+        window.addEventListener("mousemove", (e) => {
+          mouseX = (e.clientX / window.innerWidth - 0.5) * 2;
+          mouseY = (e.clientY / window.innerHeight - 0.5) * 2;
+
+          // Layered parallax depth
+          const p = 10;
+          gradientLayer.style.transform = `translate(calc(-50% + ${mouseX * p}px), calc(-50% + ${mouseY * p}px))`;
+          gridLayer.style.transform = `translate(${mouseX * 6}px, ${mouseY * 6}px)`;
+          document.getElementById("heroCard").style.transform = `translate(${mouseX * 4}px, ${mouseY * 4}px)`;
+        });
+
+        resize();
+        draw();
+      })();
+
+      /* Planner UI logic */
+      const form = document.getElementById("plannerForm");
+      const resultCard = document.getElementById("resultCard");
+      const answerBox = document.getElementById("answerBox");
+      const metaBox = document.getElementById("metaBox");
+      const submitBtn = document.getElementById("submitBtn");
+      const resetBtn = document.getElementById("resetBtn");
+      const followupChips = document.getElementById("followupChips");
+      const followupForm = document.getElementById("followupForm");
+      const followupInput = document.getElementById("followupInput");
+      const followupLimitText = document.getElementById("followupLimitText");
+
+      let lastLocation = "";
+      let followupsUsed = 0;
+      const FOLLOWUP_MAX = 9;
+
+      resetBtn.addEventListener("click", () => {
+        form.reset();
+        const travelMode = document.getElementById("travelMode");
+        const foodPref = document.getElementById("foodPref");
+        Array.from(travelMode.options).forEach((opt) => (opt.selected = false));
+        Array.from(foodPref.options).forEach((opt) => (opt.selected = false));
+        resultCard.classList.add("hidden");
+        answerBox.innerHTML = "";
+        metaBox.textContent = "";
+        followupChips.innerHTML = "";
+        followupInput.value = "";
+        lastLocation = "";
+        followupsUsed = 0;
+        updateFollowupLimit();
+      });
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const destination = document.getElementById("destination").value.trim();
+        const origin = document.getElementById("origin").value.trim();
+        const startDate = document.getElementById("startDate").value;
+        const endDate = document.getElementById("endDate").value;
+        const persons = document.getElementById("persons").value;
+        const travelModeSelect = document.getElementById("travelMode");
+        const selectedTravelModes = Array.from(travelModeSelect.selectedOptions).map((o) => o.value);
+        const budget = document.getElementById("budget").value;
+        const hotel = document.getElementById("hotel").value;
+        const purpose = document.getElementById("purpose").value;
+        const kids = document.getElementById("kids").value;
+        const pets = document.getElementById("pets").value;
+        const foodPrefSelect = document.getElementById("foodPref");
+        const selectedFoodPrefs = Array.from(foodPrefSelect.selectedOptions).map((o) => o.value);
+        const notes = document.getElementById("notes").value.trim();
+
+        if (!selectedTravelModes.length) {
+          alert("Please select at least one travel mode.");
+          return;
+        }
+        if (!selectedFoodPrefs.length) {
+          alert("Please select at least one food preference.");
+          return;
+        }
+        if (endDate < startDate) {
+          alert("End date must be on or after start date.");
+          return;
+        }
+
+        const query = [
+          `Plan a trip to ${destination}.`,
+          `I am traveling from ${origin}.`,
+          `Travel dates are from ${startDate} to ${endDate}.`,
+          `Number of travelers: ${persons}.`,
+          `Preferred travel modes: ${selectedTravelModes.join(", ")}.`,
+          `Budget: ${budget}.`,
+          `Hotel preference: ${hotel}.`,
+          `Purpose of travel: ${purpose}.`,
+          `Travelling with kids: ${kids}.`,
+          `Travelling with pets: ${pets}.`,
+          `Food preferences: ${selectedFoodPrefs.join(", ")}.`,
+          "Include weather forecast considerations for packing and itinerary. You can check weather.",
+        ]
+          .concat(notes ? [`Additional preferences: ${notes}.`] : [])
+          .join(" ");
+
+        lastLocation = destination;
+        followupsUsed = 0;
+        updateFollowupLimit();
+        answerBox.innerHTML = "";
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Generating...";
+        await askPlanner(query, destination, false);
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Generate Plan";
+      });
+
+      followupForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const followup = followupInput.value.trim();
+        if (!followup) return;
+        if (followupsUsed >= FOLLOWUP_MAX) {
+          alert("You have reached the maximum of 9 follow-up questions.");
+          return;
+        }
+        await askPlanner(followup, lastLocation || document.getElementById("destination").value.trim(), true);
+        followupInput.value = "";
+      });
+
+      async function askPlanner(query, location, isFollowup) {
+        resultCard.classList.remove("hidden");
+        appendLoading(query);
+
+        try {
+          const res = await fetch("/query", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ query, location }),
+          });
+
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.detail || "Request failed");
+
+          const rawAnswer = data.answer || "No answer returned.";
+          const enrichedAnswer = ensureCitationsInBody(extractFinalAnswer(rawAnswer), data.sources || []);
+          replaceLastLoadingWithAnswer(query, renderMarkdownLike(enrichedAnswer));
+
+          const sources = Array.isArray(data.sources) ? data.sources.join(", ") : "n/a";
+          metaBox.textContent = `Sources: ${sources}`;
+
+          renderFollowupChips(data.suggested_followups || []);
+          if (isFollowup) {
+            followupsUsed += 1;
+            updateFollowupLimit();
+          }
+          answerBox.scrollTop = answerBox.scrollHeight;
+        } catch (err) {
+          replaceLastLoadingWithAnswer(query, `Error: ${err.message}`);
+        }
+      }
+
+      function renderFollowupChips(items) {
+        followupChips.innerHTML = "";
+        if (!Array.isArray(items) || !items.length) {
+          const empty = document.createElement("span");
+          empty.className = "text-xs text-blue-200/80";
+          empty.textContent = "No follow-up suggestions available yet.";
+          followupChips.appendChild(empty);
+          return;
+        }
+
+        for (const q of items) {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "chip rounded-full px-3 py-1 text-xs";
+          btn.textContent = q;
+          btn.addEventListener("click", async () => {
+            if (followupsUsed >= FOLLOWUP_MAX) {
+              alert("You have reached the maximum of 9 follow-up questions.");
+              return;
+            }
+            await askPlanner(q, lastLocation || document.getElementById("destination").value.trim(), true);
+          });
+          followupChips.appendChild(btn);
+        }
+      }
+
+      function updateFollowupLimit() {
+        const remaining = Math.max(0, FOLLOWUP_MAX - followupsUsed);
+        followupLimitText.textContent = `Remaining follow-ups: ${remaining}/${FOLLOWUP_MAX}`;
+      }
+
+      function appendLoading(query) {
+        const item = document.createElement("div");
+        item.className = "rounded-xl border border-blue-200/20 bg-blue-100/5 p-3";
+        item.dataset.loading = "1";
+        item.innerHTML = `<p class="mb-2 text-xs text-cyan-100/90">You asked: ${escapeHtml(query)}</p><div class="text-sm text-blue-100">Generating...</div>`;
+        answerBox.appendChild(item);
+        answerBox.scrollTop = answerBox.scrollHeight;
+      }
+
+      function replaceLastLoadingWithAnswer(query, answerHtml) {
+        const candidates = answerBox.querySelectorAll('[data-loading="1"]');
+        const item = candidates[candidates.length - 1];
+        if (!item) return;
+        item.dataset.loading = "0";
+        item.innerHTML = `<p class="mb-2 text-xs text-cyan-100/90">You asked: ${escapeHtml(query)}</p><div class="text-sm text-blue-50">${answerHtml}</div>`;
+      }
+
+      function extractFinalAnswer(text) {
+        if (!text || typeof text !== "string") return "No answer returned.";
+        const marker = "Final Answer:";
+        const idx = text.indexOf(marker);
+        if (idx === -1) return text.trim();
+        return text.slice(idx + marker.length).trim();
+      }
+
+      function ensureCitationsInBody(answerText, sources) {
+        if (!answerText || typeof answerText !== "string") return "No answer returned.";
+        if (answerText.includes("Citations:")) return answerText;
+        if (!Array.isArray(sources) || !sources.length) return answerText;
+        const citationLines = sources.map((src, i) => `[${i + 1}] ${src}`).join("\n");
+        return `${answerText}\n\nCitations:\n${citationLines}`;
+      }
+
+      function renderMarkdownLike(text) {
+        const escaped = escapeHtml(text);
+        const lines = escaped.split("\n").map((line) => {
+          const headingMatch = line.match(/^#{1,6}\s+(.+)$/);
+          if (headingMatch) return `<strong>${headingMatch[1]}</strong>`;
+          return line;
+        });
+        return lines.join("\n").replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/\n/g, "<br>");
+      }
+
+      function escapeHtml(str) {
+        return String(str)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/\"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+      }
+
+      updateFollowupLimit();
+    </script>
+  </body>
+</html>
