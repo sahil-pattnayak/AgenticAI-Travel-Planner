@@ -88,7 +88,7 @@ travel-planner/
 │   │   ├── css/
 │   │   ├── js/
 │   │   └── images/
-│   └── components/                # optional if you split UI
+│   └── components/               
 ├── data/
 │   └── faiss_store/
 ├── tests/
