@@ -13,7 +13,7 @@ The backend provides an **agentic RAG planning service** that:
 - Returns grounded travel plans with source links.
 
 ## 2) High-Level Architecture
-![High-Level Architecture](docs/screenshots/FlowDiagram.png)
+![High-Level Architecture](screenshots/FlowDiagram.png)
 
 ## 3) Module-by-Module Breakdown
 
