@@ -2,7 +2,7 @@
 
 Production-grade AI travel planner with an immersive animated frontend, tool-using agent workflow, and grounded source-backed responses.
 
-## 🎥 Demo
+## 🎥 Video Demo on YouTube
 
 [![Watch the video](https://img.youtube.com/vi/q-vZ_SSae3A/maxresdefault.jpg)](https://www.youtube.com/watch?v=q-vZ_SSae3A)
 
