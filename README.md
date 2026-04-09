@@ -116,6 +116,90 @@ Response:
 }
 ```
 
+## Example Session (Jagannath Temple - Puri)
+
+### Example Query
+
+```text
+Plan a trip to Puri. I am traveling from Gurgaon. Travel dates are from 2026-04-17 to 2026-04-20.
+Number of travelers: 2. Preferred travel modes: Flight, Taxi. Budget: No Budget Constraint.
+Hotel required: Yes. Hotel preference: 5-star. Purpose of travel: Leisure. Travelling with kids: No.
+Travelling with pets: No. Food preferences: Vegetarian. Include weather forecast considerations for packing and itinerary.
+You can check weather. Additional preferences: I want to visit Jagannath Temple.
+Please help me plan the trip day-wise and also include what to pack. Create a proper plan.
+```
+
+### Example Response
+
+```text
+Here’s a suggested itinerary for your trip to Puri from April 17 to April 20, 2026:
+
+Day-wise Itinerary:
+
+Day 1 (April 17): Arrival in Puri
+- Travel: Flight from Gurgaon to Bhubaneswar (the nearest airport is approximately 60 km from Puri). Hire a taxi to reach your 5-star hotel.
+- Hotel: Mayfair Waves, Swosti Premium Hotel, The Chariot Resort & Spa.
+
+Day 2 (April 18): Jagannath Temple Visit
+- Morning: Vegetarian breakfast and temple visit prep (no camera/leather items).
+- Afternoon: Temple complex + lunch at nearby vegetarian restaurant.
+- Evening: Puri Beach sunset walk.
+
+Day 3 (April 19): Leisure and Exploration
+- Gundicha Temple, Lokanatha Temple, local markets, Odisha crafts.
+
+Day 4 (April 20): Departure
+- Relaxed morning, checkout, taxi to Bhubaneswar Airport.
+
+Packing Suggestions:
+- Light breathable clothing (warm and humid weather).
+- Umbrella/raincoat, comfortable sandals, sunscreen.
+
+Sources:
+https://en.wikivoyage.org/wiki/Puri
+https://en.wikipedia.org/wiki/Puri
+https://openweathermap.org/
+```
+
+### Example Follow-up
+
+```text
+Question: Can you recommend any specific vegetarian restaurants near Jagannath Temple?
+
+Answer:
+1. Shyama - opposite Jagannath Temple on Grand Road.
+2. Dada Boudir Restaurant - known for Bengali vegetarian options.
+
+Sources:
+https://en.wikivoyage.org/wiki/Puri
+https://en.wikipedia.org/wiki/Puri
+```
+
+## UI Screenshots
+
+Add your images under `docs/screenshots/` and keep these names:
+
+- `planner-hero-form.png`
+- `planner-form-lower.png`
+- `planner-conversation-main.png`
+- `planner-conversation-followup.png`
+
+Markdown embeds:
+
+```md
+![VoyagePilot Hero + Form](docs/screenshots/planner-hero-form.png)
+![VoyagePilot Multi-select + Notes](docs/screenshots/planner-form-lower.png)
+![VoyagePilot Conversation Main Answer](docs/screenshots/planner-conversation-main.png)
+![VoyagePilot Conversation Follow-up](docs/screenshots/planner-conversation-followup.png)
+```
+
+Rendered preview (auto-shows once images are added):
+
+![VoyagePilot Hero + Form](docs/screenshots/planner-hero-form.png)
+![VoyagePilot Multi-select + Notes](docs/screenshots/planner-form-lower.png)
+![VoyagePilot Conversation Main Answer](docs/screenshots/planner-conversation-main.png)
+![VoyagePilot Conversation Follow-up](docs/screenshots/planner-conversation-followup.png)
+
 ## Behavioral Notes
 
 - First answer auto-includes weather when location is available.
@@ -155,4 +239,3 @@ git add README.md
 git rebase --continue
 git push -u origin main
 ```
-
