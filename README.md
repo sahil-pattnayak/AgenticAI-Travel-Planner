@@ -58,7 +58,7 @@ data/
 +-- faiss_store/
 ```
 ## High-Level Architecture
-![High-Level Architecture](screenshots/FlowDiagram.png)
+![High-Level Architecture](docs/screenshots/FlowDiagram.png)
 
 ## Setup
 
