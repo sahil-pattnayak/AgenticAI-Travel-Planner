@@ -13,26 +13,7 @@ The backend provides an **agentic RAG planning service** that:
 - Returns grounded travel plans with source links.
 
 ## 2) High-Level Architecture
-
-```text
-Client (Frontend/REST)
-        |
-        v
-FastAPI (app/main.py)
-        |
-        v
-TravelPlannerAgent (LangGraph flow)
-  planner_node -> (optional) tool_node -> responder_node
-        |                     |               |
-        |                     |               +--> LLM synthesis + source formatting + follow-up suggestions
-        |                     |
-        |                     +--> ToolExecutor --> WeatherTool / NewsTool
-        |
-        +--> TravelRetriever --> VectorStoreManager (FAISS)
-                                    ^
-                                    |
-                         Ingestion Pipeline (crawl/clean/chunk/index)
-```
+![High-Level Architecture](docs/screenshots/FlowDiagram.png)
 
 ## 3) Module-by-Module Breakdown
 
