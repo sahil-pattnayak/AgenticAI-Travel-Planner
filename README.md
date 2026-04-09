@@ -57,6 +57,8 @@ frontend/
 data/
 +-- faiss_store/
 ```
+## High-Level Architecture
+![High-Level Architecture](screenshots/FlowDiagram.png)
 
 ## Setup
 
