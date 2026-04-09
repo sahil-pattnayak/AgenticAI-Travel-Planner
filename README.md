@@ -118,7 +118,13 @@ Response:
 
 ## Example Session (Jagannath Temple - Puri)
 
-### Example Query
+### Original User Query
+
+```text
+I want to visit Jagannath Temple. Please help me plan the trip day-wise and also include what to pack. Create a proper plan.
+```
+
+### Agent-Decomposed Query
 
 ```text
 Plan a trip to Puri. I am traveling from Gurgaon. Travel dates are from 2026-04-17 to 2026-04-20.
