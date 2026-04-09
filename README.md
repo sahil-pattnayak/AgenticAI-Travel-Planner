@@ -183,24 +183,6 @@ https://en.wikipedia.org/wiki/Puri
 
 ## UI Screenshots
 
-Add your images under `docs/screenshots/` and keep these names:
-
-- `planner-hero-form.png`
-- `planner-form-lower.png`
-- `planner-conversation-main.png`
-- `planner-conversation-followup.png`
-
-Markdown embeds:
-
-```md
-![VoyagePilot Hero + Form](docs/screenshots/planner-hero-form.png)
-![VoyagePilot Multi-select + Notes](docs/screenshots/planner-form-lower.png)
-![VoyagePilot Conversation Main Answer](docs/screenshots/planner-conversation-main.png)
-![VoyagePilot Conversation Follow-up](docs/screenshots/planner-conversation-followup.png)
-```
-
-Rendered preview (auto-shows once images are added):
-
 ![VoyagePilot Hero + Form](docs/screenshots/planner-hero-form.png)
 ![VoyagePilot Multi-select + Notes](docs/screenshots/planner-form-lower.png)
 ![VoyagePilot Conversation Main Answer](docs/screenshots/planner-conversation-main.png)
